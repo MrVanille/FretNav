@@ -3,6 +3,7 @@ from location import coords as stations
 from cargo import types
 from cargo import compT
 from cargo import sizes
+from location import distanceCalc
 
 def validLoc(loc:str)->(bool | str):
     """
@@ -108,6 +109,13 @@ def doRoute(route:list[str], vesselSize:int, contracts:list[Contract], verbose:b
         if not(validLoc(step)):
             print("{0} is not a valid location.".format(step))
             return None
+    distanceTraveled = 0
+    for i in range(len(route)-1):
+        distanceStep = distanceCalc(route[i], route[i+1])
+        print("Distance from {0} to {1}: {2}.{3}Gm".format(route[i], route[i+1], int(distanceStep), int((distanceStep*100)%100)))
+        distanceTraveled += distanceStep
+    print("In total, you should travel around {0}.{1}Gm during this route.".format(int(distanceTraveled), int((distanceTraveled*100)%100)))
+    print("\n")
     print("Route starting point: {}".format(route[0]))
     for step in route:
         if step != route[0]:
@@ -118,7 +126,7 @@ def doRoute(route:list[str], vesselSize:int, contracts:list[Contract], verbose:b
         if holdSCU == 0:
             pass
         else:
-            print(hold)
+            #print(hold) #show content of the hold upon arriving (DEBUG)
             if step in hold:
                 text = ''
                 for cargo in hold[step]:
@@ -172,6 +180,7 @@ def doRoute(route:list[str], vesselSize:int, contracts:list[Contract], verbose:b
     print("Route finished. Currently located at {}.".format(route[-1]))
     if route[0] == route[-1]:
         print("This was also the starting point. Welcome back!")
+    print("You have travelled around {0}.{1}Gm during this route.".format(int(distanceTraveled), int((distanceTraveled*100)%100)))
     if holdSCU != 0:
         sss = 's'
         if holdSCU == 1:

@@ -74,4 +74,4 @@ class Location():
         self.loc = name
         self.coord = coord
         self.system = system'''
-print(distanceCalc("HUR", "Arccorp"))
+#print(distanceCalc("HUR", "Arccorp"))
