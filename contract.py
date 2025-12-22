@@ -1,5 +1,8 @@
 from location import locs as locations
 from location import coords as stations
+from cargo import types
+from cargo import compT
+from cargo import sizes
 
 def validLoc(loc:str)->(bool | str):
     """
@@ -94,18 +97,106 @@ class Contract():
         return text
 
 
+def doRoute(route:list[str], vesselSize:int, contracts:list[Contract], verbose:bool=True)->None:
+    """
+    Executes the route, giving position info and warnings for overcapacity.
+    If verbose is set to True (default), also gives loading and unloading instructions as well as capacity info.
+    """
+    hold = {}
+    holdSCU = 0
+    for step in route:
+        if not(validLoc(step)):
+            print("{0} is not a valid location.".format(step))
+            return None
+    print("Route starting point: {}".format(route[0]))
+    for step in route:
+        if step != route[0]:
+            print("Loaded, departing for {}.".format(step))
+            print("\n")
+            print("Arriving at {}".format(step))
+        # unload
+        if holdSCU == 0:
+            pass
+        else:
+            print(hold)
+            if step in hold:
+                text = ''
+                for cargo in hold[step]:
+                    amount = cargo[0]
+                    type = cargo[1]
+                    if verbose: 
+                        if text == '':
+                            text = "Unloading cargo :"
+                        if text[-1] != ':':
+                            text += ","
+                        text += " {0} {1}".format(amount, type)
+                    holdSCU -= amount
+                hold.pop(step)
+                if verbose:
+                    print(text)
+        # load
+        load = {}
+        for c in contracts:
+            for srcType in c.content:
+                if step == srcType[0]:
+                    for dest in c.content[srcType][1]:
+                        if dest in load:
+                            load[dest].append((c.content[srcType][1][dest], srcType[1]))
+                        else:
+                            load[dest] = []
+                            load[dest].append((c.content[srcType][1][dest], srcType[1]))
+        for dest in load:
+            text = ''
+            if verbose:
+                text = "Loading cargo to {0}:".format(dest)
+                for cargo in load[dest]:
+                    amount = cargo[0]
+                    type = cargo[1]
+                    if text[-1] != ':':
+                        text += ","
+                    text += " {0} {1}".format(amount, type)
+                print(text)
+            if not(dest in hold):
+                hold[dest] = []
+            hold[dest] += load[dest]
+            for l in load[dest]:
+                holdSCU += l[0]
+        load = {} #debug vizualisation
+        if holdSCU > vesselSize:
+            sss = 's'
+            if holdSCU-vesselSize == 1:
+                sss = ''
+            print("Overcapacity by {0} SCU{1}.".format(holdSCU-vesselSize, sss))
+        elif verbose:
+            print("Carrying {}/{} SCUs ({}%).".format(holdSCU, vesselSize, int(100*holdSCU/vesselSize)))
+    print("Route finished. Currently located at {}.".format(route[-1]))
+    if route[0] == route[-1]:
+        print("This was also the starting point. Welcome back!")
+    if holdSCU != 0:
+        sss = 's'
+        if holdSCU == 1:
+            sss = ''
+        print("You still have {0} SCU{1} undelivered!!!".format(holdSCU, sss))
+
+
 contracts = []
 
 contracts.append(Contract())
 #print(c1)
 contracts[0].addSource("Seraphim Station", "Hydrogen")
 #print(c1)
-contracts[0].addDest("Seraphim Station", "Port Tressler", 1022, "Hydrogen")
-contracts[0].addDest("Seraphim Station", "Baijini Point", 922, "Hydrogen")
+contracts[0].addDest("Seraphim Station", "Everus Harbor", 102, "Hydrogen")
+contracts[0].addDest("Seraphim Station", "Baijini Point", 92, "Hydrogen")
 contracts.append(Contract())
 contracts[1].addDest("Everus Harbor", "HUR-L5", 96, "Quantum Fuel")
-contracts[1].addDest("Everus Harbor", "HUR-L5", 139, "Hydrogen Fuel")
+contracts[1].addDest("HUR-L5", "Everus Harbor", 139, "Hydrogen Fuel")
 contracts[1].addDest("Everus Harbor", "HUR-L5", 142, "Ship Ammunition")
 print("\n")
 for c in contracts:
     print(c)
+
+print("\n\n")
+print("Routing test")
+print("\n\n")
+route = ["Seraphim Station", "Everus Harbor", "HUR-L5", "Baijini Point"]
+doRoute(route, 696, contracts, True)
