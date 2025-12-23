@@ -1,102 +1,11 @@
+from contract import Contract
+from contract import validLoc
 from location import locs as locations
 from location import coords as stations
 from cargo import types
 from cargo import compT
 from cargo import sizes
 from location import distanceCalc
-
-def validLoc(loc:str)->(bool | str):
-    """
-    Check if location is referenced.
-    This will be useful for future features, like routing, which require coordinates.
-    Returns False if the location isn't in the database, and a correctly formatted version if it is
-    """
-    for l in locations:
-        if l.lower() == loc.lower():
-            return l
-    for s in stations:
-        if s.lower() == loc.lower():
-            return s
-    return False
-
-
-class Contract():
-    def __init__(self):
-        self.content = {}
-
-    def addSource(self, src:str, type:str)->None:
-        """
-        Adds a source to the contract
-        """
-        src = validLoc(src)
-        if src == False:
-            print("Unknown source, this only supports Lagrange point stations and planets' surfaces, orbital stations, main city and spaceport")
-        else:
-            self.content[(src, type)] = [0, {}]
-
-    def addDest(self, src:str, dest:str, amount:int, type:str)->None:
-        """
-        Adds a destination to the selected source
-        """
-        srcNotPresent = True
-        if type == '': # necessary to prevent empty key for dict search, add valid type on top
-                print("This source does not exist in this contract yet, add it first or give a valid cargo type.")
-        else:
-            for s in self.content:
-                if s == (src, type):
-                    srcNotPresent = False
-                    break
-            if srcNotPresent:
-                print("This source does not exist in this contract yet, trying to add it...")
-                self.addSource(src, type)
-                self.addDest(src, dest, amount, type)
-            else:
-                dest = validLoc(dest)
-                if dest == False:
-                    print("Unknown source, this only supports Lagrange point stations and planets' surfaces, orbital stations, main city and spaceport")
-                else:
-                    self.content[(src, type)][1][dest] = amount
-                    self.content[(src, type)][0] += amount
-
-    def delSource(self, src:str, type:str)->None:
-        """
-        Deletes the source from the contract
-        """
-        if (src, type) in self.content:
-            self.content.pop((src, type))
-            print("Successfully deleted source!")
-        else:
-            print("This source does not exist, cannot remove it!")
-
-    def delDest(self, src:str, dest:str, type:str, delEmptySource=False)->None:
-        """
-        Deletes the destination from selected source, as well as the source if it is now empty and delEmptySource is set to True 
-        """
-        if dest in self.content[(src, type)][1]:
-            self.content[(src, type)][1].pop(dest)
-            print("Successfully deleted destination!")
-            if self.content[(src, type)][1] == {} and delEmptySource:
-                print("Deleting empty source...")
-                self.delSource(self, src, type)
-        else:
-            print("This destination does not exist for this source!")
-
-    def __str__(self):
-        """
-        Return contract in a string matching the mobiGlas' Contracts Manager screen's formatting
-        """
-        if self.content == {}:
-            return "This contract is empty!"
-        text = ""
-        for src in self.content:
-            text += "Collect {0} {1} from {2}.\n".format(self.content[src][0], src[1], src[0])
-            if self.content[src][1] == {}:
-                text += "   This source has no destinations!\n"
-            else:
-                for dest in self.content[src][1]:
-                    text += "   Deliver {0} {1} to {2}.\n".format(self.content[src][1][dest], src[1], dest)
-        return text
-
 
 def doRoute(route:list[str], vesselSize:int, contracts:list[Contract], verbose:bool=True)->None:
     """
@@ -106,32 +15,29 @@ def doRoute(route:list[str], vesselSize:int, contracts:list[Contract], verbose:b
     
     # Route validation
     stepsAdded = 0
-    route[0] = validLoc(route[0])
-    if validLoc(route[0]) == False:
-        print("{0} is not a valid location.".format(route[0]))
-        return None
     for i in range(len(route)):
         step = i + stepsAdded   # Shift the cursor when locations are added by this loop
+        route[step] = validLoc(route[step])
+        if validLoc(route[step]) == False:
+            print("{0} is not a valid location.".format(route[step]))
+            return None
         if step != len(route)-1:
-            route[step+1] = validLoc(route[step+1])
-            if validLoc(route[step+1]) == False:
-                print("{0} is not a valid location.".format(route[step+1]))
-                return None
             if route[step] in locations:
-                loc1 = stations[locations[route[step]]]
+                loc1 = locations[route[step]]
             else:
-                loc1 = stations[route[step]]
+                loc1 = route[step]
             if route[step+1] in locations:
-                loc2 = stations[locations[route[step+1]]]
+                loc2 = locations[route[step]]
             else:
-                loc2 = stations[route[step+1]]
-            if (loc1[1][-7:] == "Gateway" and loc2[1][-7:] == "Gateway") and (loc1[1][:-7] == loc2[1] and (loc2[1][:-7] == loc1[1])):
+                loc2 = route[step]
+            print(stations[loc1][1], stations[loc2][1])
+            if (stations[loc1][1][-7:] == "Gateway" and stations[loc2][1][-7:] == "Gateway") and (stations[loc1][1][:-7] == stations[loc2][1] and (stations[loc2][1][:-7] == stations[loc1][1])):
                 route.pop(step+1)   # Gateway going its twin in the other system
                 stepsAdded -= 1
-            elif (loc1[1][-7:] == "Gateway" and loc1[1][:-7] == loc2[1]) or (loc1[1] == loc2[1]):
+            elif (stations[loc1][1][-7:] == "Gateway" and stations[loc1][1][:-7] == stations[loc2][1]) or (stations[loc1][1] == stations[loc2][1]):
                 pass    # (Gateway going to the next step's system AND not its twin) OR both in same system
-            elif loc1[1] != loc2[1] and (loc1[1][-7:] != "Gateway"):
-                if "{0} Gateway".format(loc2[1]) in stations and stations["{0} Gateway".format(loc2[1])] == loc1[1]:
+            elif stations[loc1][1] != stations[loc2][1] and (stations[loc1][1][-7:] != "Gateway"):
+                if "{0} Gateway".format(stations[loc2][1]) in stations and stations["{0} Gateway".format(stations[loc2][1])] == stations[loc1][1]:
                     print("These two stations are in neighbour systems, adding the gateway between them.")
                     #if gate exists
                     route.insert("{0} Gateway".format(stations[loc2][1]))
@@ -268,4 +174,4 @@ print("\n\n")
 print("Routing test")
 print("\n\n")
 route = ["Seraphim Station", "Everus Harbor", "HUR-L5", "Baijini Point"]
-doRoute(route, 696, contracts, False)
+doRoute(route, 696, contracts, True)
