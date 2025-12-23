@@ -15,29 +15,32 @@ def doRoute(route:list[str], vesselSize:int, contracts:list[Contract], verbose:b
     
     # Route validation
     stepsAdded = 0
+    route[0] = validLoc(route[0])
+    if validLoc(route[0]) == False:
+        print("{0} is not a valid location.".format(route[0]))
+        return None
     for i in range(len(route)):
         step = i + stepsAdded   # Shift the cursor when locations are added by this loop
-        route[step] = validLoc(route[step])
-        if validLoc(route[step]) == False:
-            print("{0} is not a valid location.".format(route[step]))
-            return None
         if step != len(route)-1:
+            route[step+1] = validLoc(route[step+1])
+            if validLoc(route[step+1]) == False:
+                print("{0} is not a valid location.".format(route[step+1]))
+                return None
             if route[step] in locations:
-                loc1 = locations[route[step]]
+                loc1 = stations[locations[route[step]]]
             else:
-                loc1 = route[step]
+                loc1 = stations[route[step]]
             if route[step+1] in locations:
-                loc2 = locations[route[step]]
+                loc2 = stations[locations[route[step+1]]]
             else:
-                loc2 = route[step]
-            print(stations[loc1][1], stations[loc2][1])
-            if (stations[loc1][1][-7:] == "Gateway" and stations[loc2][1][-7:] == "Gateway") and (stations[loc1][1][:-7] == stations[loc2][1] and (stations[loc2][1][:-7] == stations[loc1][1])):
+                loc2 = stations[route[step+1]]
+            if (loc1[1][-7:] == "Gateway" and loc2[1][-7:] == "Gateway") and (loc1[1][:-7] == loc2[1] and (loc2[1][:-7] == loc1[1])):
                 route.pop(step+1)   # Gateway going its twin in the other system
                 stepsAdded -= 1
-            elif (stations[loc1][1][-7:] == "Gateway" and stations[loc1][1][:-7] == stations[loc2][1]) or (stations[loc1][1] == stations[loc2][1]):
+            elif (loc1[1][-7:] == "Gateway" and loc1[1][:-7] == loc2[1]) or (loc1[1] == loc2[1]):
                 pass    # (Gateway going to the next step's system AND not its twin) OR both in same system
-            elif stations[loc1][1] != stations[loc2][1] and (stations[loc1][1][-7:] != "Gateway"):
-                if "{0} Gateway".format(stations[loc2][1]) in stations and stations["{0} Gateway".format(stations[loc2][1])] == stations[loc1][1]:
+            elif loc1[1] != loc2[1] and (loc1[1][-7:] != "Gateway"):
+                if "{0} Gateway".format(loc2[1]) in stations and stations["{0} Gateway".format(loc2[1])] == loc1[1]:
                     print("These two stations are in neighbour systems, adding the gateway between them.")
                     #if gate exists
                     route.insert("{0} Gateway".format(stations[loc2][1]))
@@ -174,4 +177,4 @@ print("\n\n")
 print("Routing test")
 print("\n\n")
 route = ["Seraphim Station", "Everus Harbor", "HUR-L5", "Baijini Point"]
-doRoute(route, 696, contracts, True)
+doRoute(route, 696, contracts, False)
